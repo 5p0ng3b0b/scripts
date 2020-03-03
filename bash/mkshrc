@@ -1,0 +1,61 @@
+# SCRIPTVERSION=04
+#########################################################
+# Define variables
+#########################################################
+HOSTNAME="$(getprop ro.product.vendor.model)"
+HOME=/sdcard
+TMP=/data/local/tmp
+HISTFILE=/sdcard/Android/.mksh_history
+VAR=/data/local/env
+PREFIX=/data/data/com.termux/files/usr
+export HOSTNAME HOME TMP HISTFILE VAR PREFIX
+# import additional variables
+if [ -e "/system/etc/variables" ]; then . /system/etc/variables; fi
+#########################################################
+# define functions
+#########################################################
+log()           { # Write timestamped message to logfile.
+                 echo "$(date +%C%y/%m/%d@%H:%M:%S): $1" >>"${VAR}log.txt"; }
+addpath()       { # Add a folder to the PATH environment variable only if the folder exists and without duplicating it.
+                 if [ -d "$1" ]; then export PATH="$(echo $PATH | sed -e "s#$1##g" -e 's/::/:/g' -e 's/:$//')":$1; fi; }
+banner()       { # Print banner.
+                local mdl=$(printf '%-8s' "$(getprop ro.product.vendor.model)")
+                local w='\e[37m'; local b='\e[36m'; local g='\e[32m'
+                local ver=v$(printf '%-8s' "$(getprop ro.build.version.incremental)")
+                echo -e "$g _____          __                  __    ______ __ __   \\____/"
+                echo -e "|     |-----.__|  |.---.-----.--.__|  |  |_    _|  |  |  / .. \\"
+                echo -e "|  -  |     |  _  |   _|  -  |  |  -  |    |  | |     | ||    ||"
+                echo -e "|__|__|__|__|_____|__| |_____|__|_____|    |__|  \\___/  '| __ |'"
+                echo -e "                                                         ||  ||"
+                echo -e "\033[1A$b$mdl                                    $ver$g"; }
+clearbar()      { # Clear notification bar
+                 service call notification 1 > /dev/null; }
+# import additional functions
+if [ -e "/system/etc/functions" ]; then . /system/etc/functions; fi
+########################################################
+# setup prompt
+########################################################
+if (( USER_ID )); then PS1='$'; else PS1='#'; fi
+PS1='$USER@$HOSTNAME:${PWD:-?} '"$PS1 "
+PS1=$(echo -n '\e[33m')$PS1$(echo -n '\e[32m')
+#########################################################
+# test for root user and elevate privileges automatically
+#########################################################
+if (( ! USER_ID )); then # we are root user
+    :
+    if [ ! -d $VAR ]; then mkdir -p $VAR; fi
+    else # We are not root lets change it but check if root daemon is installed first.
+        if [ ! -z "$(ps -A | grep -v grep | grep -c daemonsu)" ]; then su; exit; fi
+    fi
+#########################################################
+# rest of script
+#########################################################
+addpath /vendor/bin
+addpath /vendor/xbin
+if [ ! -z "$ANDROID_SOCKET_adbd" ]; then METHOD="remote ADB"; fi
+if [ ! -z "$ANDROID_SOCKET_zygote" ]; then METHOD="terminal"; fi
+if [ ! -z "$SSH_TTY" ]; then METHOD="SSH"; fi
+log "Open shell via $METHOD."
+clear
+banner
+cd $HOME
