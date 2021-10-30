@@ -30,5 +30,5 @@ while read -ra list; do
         curl -L -A "" -o "$name".gz -s "$link"
         fi
     if [ "$opt" = "-p" ]; then names="$names\t$name"; fi
-    done < /tmp/blocklists
+    done < /tmp/blocklists; rm /tmp/blocklists
 if [ "$opt" = "-p" ]; then echo -e $names | fold -s; fi
