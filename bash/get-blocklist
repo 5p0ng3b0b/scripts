@@ -1,0 +1,34 @@
+#!/bin/bash
+# Script for downloading blocklists from https://www.iblocklist.com/lists
+
+opt="$1"
+file=$(basename "$0")
+if [ "$opt" = "-h" ] || [ -z "$opt" ]; then
+    echo
+    echo "     $file"
+    echo "              Downloads blocklists from https://www.iblocklist.com/lists."
+    echo "              Syntax: $file [OPTIONS] [blocklist name|all]"
+    echo "              -h              Help"
+    echo "              -p              Print names of available blocklists."
+    echo
+    echo "   Specify -h or -p or a blocklist name. Using all will download all blocklists available."
+    echo "   Blocklists are downloaded into current directory so cd to download folder before running."
+    exit 0
+    fi
+curl -A "" -s https://www.iblocklist.com/lists.php \
+    | sed -e "s#<tr.*'>##" -e "s#</a></span></td>##" -e "s#.*value='##" -e "s#'></td>##" \
+    | sed -e 's#<td><span.*>##' -e 's#<td></td>##' | sed -z 's#\n\n#\n#g' \
+    | sed -z 's#\nhttp#http#g' | sed -z 's#\n<td>#<td>#g' | sed -e 's#<.*http# http#g' | grep =gz \
+    | sed -e 's# http#\thttp#' -e 's# #-#g' > /tmp/blocklists
+declare -i num=$(wc -l /tmp/blocklists | cut -sf 1 -d ' ')
+declare -a list
+if [ "$opt" = "-p" ]; then echo "Available blocklists:"; fi
+while read -ra list; do
+    name=${list[0]}
+    link=${list[1]}
+    if [ "$name" = "$opt" ] || [ "$opt" = "all" ]; then
+        curl -L -A "" -o "$name".gz -s "$link"
+        fi
+    if [ "$opt" = "-p" ]; then names="$names\t$name"; fi
+    done < /tmp/blocklists
+if [ "$opt" = "-p" ]; then echo -e $names | fold -s; fi
